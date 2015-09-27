@@ -35,9 +35,10 @@ activityLabels <- data.table(read.table(activityLabelsFilePath))
 ```
 
 
-Next, the program adds columns to xTrain and yTrain. The variable ActivityId is added from yTrain and yTest to xTrain and xTest, respectively, to indicate which activity was being performed for each observation of data. 
+Next, the program adds columns to xTrain and yTrain. The variable ActivityId is added from yTrain and yTest to xTrain and xTest, respectively, to indicate which activity was being performed for each observation of data. Now, each row in xTrain and xTest contains all feature values plus the activity being performed.
 
-The variable VolunteerId is added from subjectTrain and subjectTest to xTrain and xTest, respectively, to match each observation with its subject/volunteer.
+The variable VolunteerId is added from subjectTrain and subjectTest to xTrain and xTest, respectively, to match each observation with its subject/volunteer. Now, in addition to feature values and activity, each row in xTrain and xTest contains the ID of the volunteer who performed that activity.
+
 
 ```{r}
 ## get number of rows in each training set. This count is to be used when adding columns to the data sets
