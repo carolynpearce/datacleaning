@@ -2,118 +2,113 @@
 title: "Codebook"
 author: "carolynpearce"
 date: "Sunday, September 27, 2015"
-output: html_document
 ---
 
-The program initially sets all of the file paths.
+The program outputs a single table that has 180 rows and 88 columns. The first 86 columns are feature variables, and the last two are activity and volunteer variables.
 
-```{r}
-xTrainFilePath <- "./UCI HAR Dataset/train/X_train.txt"
-yTrainFilePath <- "./UCI HAR Dataset/train/y_train.txt"
-subjectTrainFilePath <- "./UCI HAR Dataset/train/subject_train.txt"
-xTestFilePath <- "./UCI HAR Dataset/test/X_test.txt"
-yTestFilePath <- "./UCI HAR Dataset/test/y_test.txt"
-subjectTestFilePath <- "./UCI HAR Dataset/test/subject_test.txt"
-featuresFilePath <- "./UCI HAR Dataset/features.txt"
-activityLabelsFilePath <- "./UCI HAR Dataset/activity_labels.txt"
-```
+Activity refers to the activity being performed, and volunteer refers to the subject/volunteer that was performing that activity.
 
-Each file is then loaded into a data table. The variables are named to indicate the data that they contain.
+The 86 other columns all contain mean values for each feature, grouped by activity and volunteer. Therefore, each feature cell can be interpreted as the average value for that feature given an activity being performed and a subject/volunteer performing that activity.
+
+For each of these features, mean() refers to the mean value, and std() refers to the standard deviation. Features that contain 'Acc' are based on data received from an accelerometer, and features that contain 'Gyro' are based on data received from a gyroscope. 'Body', 'Gravity', 'Jerk', and 'Mag' are all derived from these readings. The prefix 't' represents time domain signals, and the prefix 'f' represents frequency domain signals. A more complete explanation for the meaning of these names is provided in the original data set:
 
 
-```{r}
-xTrain <- data.table(read.table(xTrainFilePath))
-yTrain <- data.table(read.table(yTrainFilePath))
-subjectTrain <- data.table(read.table(subjectTrainFilePath))
+>The features selected for this database come from the accelerometer and gyroscope 3-axial raw signals tAcc-XYZ and tGyro-XYZ. These time domain signals (prefix 't' to denote time) were captured at a constant rate of 50 Hz. Then they were filtered using a median filter and a 3rd order low pass Butterworth filter with a corner frequency of 20 Hz to remove noise. Similarly, the acceleration signal was then separated into body and gravity acceleration signals (tBodyAcc-XYZ and tGravityAcc-XYZ) using another low pass Butterworth filter with a corner frequency of 0.3 Hz. 
 
-xTest <- data.table(read.table(xTestFilePath))
-yTest <- data.table(read.table(yTestFilePath))
-subjectTest <- data.table(read.table(subjectTestFilePath))
+>Subsequently, the body linear acceleration and angular velocity were derived in time to obtain Jerk signals (tBodyAccJerk-XYZ and tBodyGyroJerk-XYZ). Also the magnitude of these three-dimensional signals were calculated using the Euclidean norm (tBodyAccMag, tGravityAccMag, tBodyAccJerkMag, tBodyGyroMag, tBodyGyroJerkMag). 
+>
+>Finally a Fast Fourier Transform (FFT) was applied to some of these signals producing fBodyAcc-XYZ, fBodyAccJerk-XYZ, fBodyGyro-XYZ, fBodyAccJerkMag, fBodyGyroMag, fBodyGyroJerkMag. (Note the 'f' to indicate frequency domain signals). 
 
-features <- data.table(read.table(featuresFilePath))
-activityLabels <- data.table(read.table(activityLabelsFilePath))
-```
+>These signals were used to estimate variables of the feature vector for each pattern:  
+>'-XYZ' is used to denote 3-axial signals in the X, Y and Z directions.
 
 
-Next, the program adds columns to xTrain and yTrain. The variable ActivityId is added from yTrain and yTest to xTrain and xTest, respectively, to indicate which activity was being performed for each observation of data. Now, each row in xTrain and xTest contains all feature values plus the activity being performed.
 
-The variable VolunteerId is added from subjectTrain and subjectTest to xTrain and xTest, respectively, to match each observation with its subject/volunteer. Now, in addition to feature values and activity, each row in xTrain and xTest contains the ID of the volunteer who performed that activity.
+These features are:
 
-
-```{r}
-## get number of rows in each training set. This count is to be used when adding columns to the data sets
-trainRowCount <- nrow(xTrain)
-testRowCount <- nrow(xTest)
-
-## add a variable indicating whether or not this observation is from the training or test data set
-xTrain$TrainOrTest <- rep("Train",trainRowCount)
-xTest$TrainOrTest <- rep("Test", testRowCount)
-
-## add activity being performed to each observation of the training and test data sets
-xTrain$ActivityId <- yTrain
-xTest$ActivityId <- yTest
-
-## add subject/volunteer id to each observation of the training and test data sets
-xTrain$VolunteerId <- subjectTrain
-xTest$VolunteerId <- subjectTest
-```
-
-At this point, there are two primary data tables being used -- one for the training data (xTrain), and one for the test data (xTest). The next step row binds these two data tables together.
-
-```{r}
-## row bind the training and test data tables to make one complete table
-mergedDt <- rbind(xTrain, xTest)
-```
-
-Now, there is one dataset that contains all observations for the test and training data. For each observation, the activiy being performed and subject performing the activity is known.
-
-Only columns that contain mean or std information are going to be used, so this step filters out all of the other columns using a logical vector.
-
-```{r}
-## filter out non mean or std columns
-
-## get all of the feature names, cast as character vector
-newNames <- as.character(features[,V2])
-
-## use a regular expression to create a logical vector indicating which strings in the newNames 
-## contain information about mean or std
-logicalVector <- grepl("mean|std|Mean",newNames)
-
-## append 3 TRUE values for the 3 columns added before (TrainOrTest, ActivityId, and VolunteerId)
-logicalVector <- append(logicalVector,c(TRUE, TRUE, TRUE))
-
-## subset the merged data set to get only those columns that contain information about mean or std
-subsetData <- subset(mergedDt, select = logicalVector)
-```
-
-At this point, we have a data table that 1) contains all training and test observations, 2) has activity and subject information available for each observation, and 3) only contains feature variables that are about mean or standard deviation.
-
-Next, substitute the factor levels with more descriptive factor labels for the Activity Variable.
-
-```{r}
-# Add activity description
-subsetData$ActivityId <- as.factor(subsetData$ActivityId)
-
-## get labels from the activityLabels data table
-levels(subsetData$ActivityId) <- as.character(activityLabels[,V2])
-```
-
-Then, replace undescriptive header names for the feature variables with the correct feature names
-
-```{r}
-logicalVector <- grepl("mean|std|Mean",newNames)
-## these are the names of the features that are about mean and std
-featureSubset <- subset(newNames, logicalVector)
-
-## get the current undescriptive names of all of the feature variables in the data table
-oldNames <- names(subsetData)[1:86]
-
-## replace the old names with the more descriptive feature names
-setnames(subsetData, old=oldNames, new=featureSubset)
-```
-
-Finally, get the average of each feature grouped by the activity being performed and the volunteer performing that activity.
-
-```{r}
-subsetAvg <- select(subsetData,-TrainOrTest) %>% group_by(ActivityId, VolunteerId) %>% summarize_each(c("mean"))
-```
+1) tBodyAcc-mean()-x
+2) tBodyAcc-mean()-y
+3) tBodyAcc-mean()-z
+4) tBodyAcc-std()-X
+5) tBodyAcc-std()-Y
+6) tBodyAcc-std()-Z 
+7) tGravityAcc-mean()-X 
+8) tGravityAcc-mean()-Y 
+9) tGravityAcc-mean()-Z
+10) tGravityAcc-std()-X 
+11) tGravityAcc-std()-Y
+12) tGravityAcc-std()-Z
+13) tBodyAccJerk-mean()-X 
+14) tBodyAccJerk-mean()-Y 
+15) tBodyAccJerk-mean()-Z 
+16) tBodyAccJerk-std()-X 
+17) tBodyAccJerk-std()-Y
+18) tBodyAccJerk-std()-Z 
+19) tBodyGyro-mean()-X
+20) tBodyGyro-mean()-Y
+21) tBodyGyro-mean()-Z
+22) tBodyGyro-std()-X 
+23) tBodyGyro-std()-Y 
+24) tBodyGyro-std()-Z
+25) tBodyGyroJerk-mean()-X 
+26) tBodyGyroJerk-mean()-Y 
+27) tBodyGyroJerk-mean()-Z 
+28) tBodyGyroJerk-std()-X 
+29) tBodyGyroJerk-std()-Y 
+30) tBodyGyroJerk-std()-Z 
+31) tBodyAccMag-mean() 
+32) tBodyAccMag-std() 
+33) tGravityAccMag-mean() 
+34) tGravityAccMag-std()
+35) tBodyAccJerkMag-mean() 
+36) tBodyAccJerkMag-std() 
+37) tBodyGyroMag-mean() 
+38) tBodyGyroMag-std() 
+39) tBodyGyroJerkMag-mean() 
+40) tBodyGyroJerkMag-std() 
+41) fBodyAcc-mean()-X 
+42) fBodyAcc-mean()-Y 
+43) fBodyAcc-mean()-Z 
+44) fBodyAcc-std()-X 
+45) fBodyAcc-std()-Y 
+46) fBodyAcc-std()-Z 
+47) fBodyAcc-meanFreq()-X 
+48) fBodyAcc-meanFreq()-Y
+49) fBodyAcc-meanFreq()-Z 
+50) fBodyAccJerk-mean()-X 
+51) fBodyAccJerk-mean()-Y 
+52) fBodyAccJerk-mean()-Z 
+53) fBodyAccJerk-std()-X 
+54) fBodyAccJerk-std()-Y 
+55) fBodyAccJerk-std()-Z 
+56) fBodyAccJerk-meanFreq()-X 
+57) fBodyAccJerk-meanFreq()-Y 
+58) fBodyAccJerk-meanFreq()-Z 
+59) fBodyGyro-mean()-X 
+60) fBodyGyro-mean()-Y 
+61) fBodyGyro-mean()-Z 
+62) fBodyGyro-std()-X 
+63) fBodyGyro-std()-Y 
+64) fBodyGyro-std()-Z 
+65) fBodyGyro-meanFreq()-X 
+66) fBodyGyro-meanFreq()-Y 
+67) fBodyGyro-meanFreq()-Z 
+68) fBodyAccMag-mean() 
+69) fBodyAccMag-std() 
+70) fBodyAccMag-meanFreq() 
+71) fBodyBodyAccJerkMag-mean() 
+72) fBodyBodyAccJerkMag-std() 
+73) fBodyBodyAccJerkMag-meanFreq()
+74) fBodyBodyGyroMag-mean() 
+75) fBodyBodyGyroMag-std() 
+76) fBodyBodyGyroMag-meanFreq() 
+77) fBodyBodyGyroJerkMag-mean() 
+78) fBodyBodyGyroJerkMag-std() 
+79) fBodyBodyGyroJerkMag-meanFreq()
+80) angle(tBodyAccMean,gravity) 
+81) angle(tBodyAccJerkMean),gravityMean) (
+82) angle(tBodyGyroMean,gravityMean) 
+83) angle(tBodyGyroJerkMean,gravityMean) 
+84) angle(X,gravityMean) 
+85) angle(Y,gravityMean) 
+86) angle(Z,gravityMean)
